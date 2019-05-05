@@ -1,0 +1,51 @@
+# Project
+Assets/Editor/Resources/ApiTest/*
+Assets/AssetBundleBuild/Android/*
+Assets/AssetBundleBuild/iOS/*
+!.gitkeep
+
+# =============== #
+# Unity generated #
+# =============== #
+Temp/
+Obj/
+UnityGenerated/
+/Library/
+
+# ===================================== #
+# Visual Studio / MonoDevelop generated #
+# ===================================== #
+ExportedObj/
+Logs/
+*.svd
+*.userprefs
+*.csproj
+*.pidb
+*.suo
+*.sln
+*.user
+*.unityproj
+*.booproj
+/.vs/
+.idea/*
+
+# ============ #
+# OS generated #
+# ============ #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+
+# ============ #
+# for others   #
+# ============ #
+*.log
+*.pyc
+sysinfo.txt
+*.smproj
+~$*
