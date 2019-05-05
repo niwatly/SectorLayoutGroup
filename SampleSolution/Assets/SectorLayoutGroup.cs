@@ -12,7 +12,7 @@ namespace Btf.View
 	 *
 	 * 扇形の定義は、Start, End, Centerの3つのGameObjectの位置を変更することで行う
 	 *
-	 * 子供となるGameObjectの位置は、扇形の円周に対して均一に並ぶように調整される。角度に関しては、Centerからの扇形の角度に沿うように調整される。
+	 * 子供となるGameObjectの位置は、扇形の円周に対して均一に並ぶように調整される
 	 */
 	public class SectorLayoutGroup : MonoBehaviour
 	{
@@ -37,18 +37,17 @@ namespace Btf.View
 		[SerializeField]
 		public bool enableDebug;
 
-		//始点と終点の外積ベクトルを向くように回転させる
+		//子供の整列が終わった後、どの位置に向けて角度を調整するか
 		[SerializeField]
 		public LookAtKind lookAt;
 
+		//位置と角度の計算を行わない
 		[SerializeField]
 		public bool freezing;
 
 		private void Awake()
 		{
 			transform.ObserveEveryValueChanged(x => x.childCount)
-			   .Skip(1)
-				//複数の子供が順に追加される時の無駄な整列を抑えたい
 			   .Subscribe(x =>
 				{
 					AlignChildren();
