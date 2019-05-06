@@ -31,18 +31,29 @@ namespace Btf.View
 		[SerializeField]
 		public GameObject end;
 
+		[SerializeField]
+		public bool lookBackX;
+
+		[SerializeField]
+		public bool lookBackY;
+
+		[SerializeField]
+		public bool lookBackZ;
+
+		//位置と角度の計算を行わない
+		[SerializeField]
+		public bool freezing;
+
 		//デバッグ用の処理をONにする
 		// - Debug.Logによるロギング
 		// - 位置取り用GameObjectの可視化
 		[SerializeField]
 		public bool enableDebug;
 
-		//位置と角度の計算を行わない
-		[SerializeField]
-		public bool freezing;
 
 		private void Awake()
 		{
+			//子供の数が変化したら整列し直す
 			transform.ObserveEveryValueChanged(x => x.childCount)
 			   .Subscribe(x =>
 				{
@@ -52,6 +63,11 @@ namespace Btf.View
 				;
 		}
 
+		/**
+		 * 対象となる子供を取得する
+		 *
+		 * 子供には位置取り用の Start, End, Center が含まれているのでそれらを除外したい
+		 */
 		private IEnumerable<Transform> GetTargetChildren()
 		{
 			for (var i = 0; i < transform.childCount; i++)
@@ -73,7 +89,9 @@ namespace Btf.View
 		private void AlignChildren()
 		{
 			var children = GetTargetChildren();
+
 			//ここに来るときは center, start, end のGameObjectが必ず含まれていると仮定して -3 する
+			//childrenのEnumerableを回すのは1回にとどめたい
 			var childrenCount = gameObject.transform.childCount - 3;
 
 			if (enableDebug)
@@ -83,11 +101,14 @@ namespace Btf.View
 
 			if (childrenCount == 0)
 			{
+				//対象となる子供はいないので終了する
 				return;
 			}
 
 			if (freezing)
 			{
+				//フリーズが指定されているので、回転情報を初期化して終了する
+				//位置情報も初期化したい？
 				foreach (var child in children)
 				{
 					child.localRotation = Quaternion.identity;
@@ -97,27 +118,29 @@ namespace Btf.View
 			}
 
 			//始点へのベクトルと終点へのベクトルを作る
-			//Note: 計算の都合上、中心からのベクトルとして作成している
+			//
+			//Note: 角度算出のための極座標変換に向けて、中心点からのベクトルとする
 			var centerV = center.transform.localPosition;
 			var startV = start.transform.localPosition - centerV;
 			var endV = end.transform.localPosition - centerV;
+			var scaleV = new Vector3(lookBackX ? -1 : 1, lookBackY ? -1 : 1, lookBackZ ? -1 : 1);
+
 
 			//始点へのベクトルを極座標変換する
 			var startR = startV.magnitude;
 			var startTheta = Mathf.Acos(startV.z / startR);
 			var startPhi = Mathf.Atan2(startV.y, startV.x);
 
-			//終点へのベクトルを曲座標変換する
+			//終点へのベクトルを極座標変換する
 			var endR = endV.magnitude;
 			var endTheta = Mathf.Acos(endV.z / endR);
 			var endPhi = Mathf.Atan2(endV.y, endV.x);
 
-			//始点と終点の間の角度を求める
+			//始点と終点の角度を求め、子供一人あたりの差分を決める
 			//3次元なので角度も2つ
 			var thetaDelta = (endTheta - startTheta) / childrenCount;
 			var phiDelta = (endPhi - startPhi) / childrenCount;
 
-			//2つの角度それぞれに対してカーソルを作成する
 			//左詰め配置ではなく均一配置がしたいので、初期値には delta / 2を足す
 			var thetaCursor = startTheta + thetaDelta / 2;
 			var phiCursor = startPhi + phiDelta / 2;
@@ -140,20 +163,26 @@ namespace Btf.View
 					Debug.DrawLine(transform.TransformPoint(centerV), transform.TransformPoint(newPosition), Color.blue, 2f);
 				}
 
-				//var rotation = Quaternion.FromToRotation(Vector3.up, to);
-				var rotation = Quaternion.LookRotation(centerV - newPosition);
+				//回転のための位置ベクトルを算出する
+				var lookAt = Vector3.Scale(centerV - newPosition, scaleV) + newPosition;
+
+				var newRotation = Quaternion.LookRotation(lookAt - newPosition, transform.up);
 
 				if (enableDebug)
 				{
+					Debug.Log($"look at forward {lookAt - newPosition}");
 					Debug.DrawLine(transform.TransformPoint(centerV), transform.TransformPoint(newPosition), Color.red, 2f);
+					Debug.DrawLine(transform.TransformPoint(newPosition), transform.TransformPoint(lookAt), Color.yellow, 2f);
 				}
 
-				child.localRotation = rotation;
+				//位置情報と回転情報を更新
+				child.localRotation = newRotation;
 				child.localPosition = newPosition;
 
+				//拡張機能のため、更新の完了したGameObjectを知らせる
 				_laidOutGameObjectSub?.OnNext(child.name);
 
-				//カーソルを進める
+				//角度カーソルを次に進める
 				thetaCursor += thetaDelta;
 				phiCursor += phiDelta;
 			}
@@ -223,27 +252,27 @@ namespace Btf.View
 
 			//各種パラメータの変更を購読し、整列命令を行う
 			var centerPositionChanged = center
-				   .ObserveEveryValueChanged(x => x.transform.position, fastDestroyCheck: true)
+				   .ObserveEveryValueChanged(x => x.transform.position)
 					//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 				   .Skip(1)
 				   .AsUnitObservable()
 				;
 
 			var startPositionChanged = start
-				   .ObserveEveryValueChanged(x => x.transform.position, fastDestroyCheck: true)
+				   .ObserveEveryValueChanged(x => x.transform.position)
 					//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 				   .Skip(1)
 				   .AsUnitObservable()
 				;
 
 			var endPositionChanged = end
-				   .ObserveEveryValueChanged(x => x.transform.position, fastDestroyCheck: true)
+				   .ObserveEveryValueChanged(x => x.transform.position)
 					//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 				   .Skip(1)
 				   .AsUnitObservable()
 				;
 
-			var childrenCountChanged = transform.ObserveEveryValueChanged(x => x.childCount, fastDestroyCheck: true)
+			var childrenCountChanged = transform.ObserveEveryValueChanged(x => x.childCount)
 					//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 				   .Skip(1)
 				   .AsUnitObservable()
