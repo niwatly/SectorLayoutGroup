@@ -227,7 +227,6 @@ MonoBehaviour:
   start: {fileID: 2846337442517517958}
   end: {fileID: 2846337442025537845}
   enableDebug: 1
-  lookAt: 0
   freezing: 0
 --- !u!223 &2846337442159089733
 Canvas:

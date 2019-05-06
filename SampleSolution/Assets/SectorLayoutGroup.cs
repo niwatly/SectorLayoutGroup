@@ -37,10 +37,6 @@ namespace Btf.View
 		[SerializeField]
 		public bool enableDebug;
 
-		//子供の整列が終わった後、どの位置に向けて角度を調整するか
-		[SerializeField]
-		public LookAtKind lookAt;
-
 		//位置と角度の計算を行わない
 		[SerializeField]
 		public bool freezing;
@@ -94,7 +90,7 @@ namespace Btf.View
 			{
 				foreach (var child in children)
 				{
-					child.rotation = Quaternion.identity;
+					child.localRotation = Quaternion.identity;
 				}
 
 				return;
@@ -102,36 +98,24 @@ namespace Btf.View
 
 			//始点へのベクトルと終点へのベクトルを作る
 			//Note: 計算の都合上、中心からのベクトルとして作成している
-			var worldCenterV = center.transform.position;
-			var startV = start.transform.position - worldCenterV;
-			var endV = end.transform.position - worldCenterV;
-
-			if (enableDebug)
-			{
-				Debug.Log($"start = {startV}");
-				Debug.Log($"end = {endV}");
-			}
+			var centerV = center.transform.localPosition;
+			var startV = start.transform.localPosition - centerV;
+			var endV = end.transform.localPosition - centerV;
 
 			//始点へのベクトルを極座標変換する
 			var startR = startV.magnitude;
-			var startTheta = Mathf.Acos(startV.y / startR);
-			var startPhi = Mathf.Atan2(startV.z, startV.x);
+			var startTheta = Mathf.Acos(startV.z / startR);
+			var startPhi = Mathf.Atan2(startV.y, startV.x);
 
 			//終点へのベクトルを曲座標変換する
 			var endR = endV.magnitude;
-			var endTheta = Mathf.Acos(endV.y / endR);
-			var endPhi = Mathf.Atan2(endV.z, endV.x);
+			var endTheta = Mathf.Acos(endV.z / endR);
+			var endPhi = Mathf.Atan2(endV.y, endV.x);
 
 			//始点と終点の間の角度を求める
 			//3次元なので角度も2つ
 			var thetaDelta = (endTheta - startTheta) / childrenCount;
 			var phiDelta = (endPhi - startPhi) / childrenCount;
-
-			if (enableDebug)
-			{
-				Debug.Log($"theta: start = {startTheta * Mathf.Rad2Deg}, end = {endTheta * Mathf.Rad2Deg}, delta = {thetaDelta * Mathf.Rad2Deg}");
-				Debug.Log($"phi: start = {startPhi * Mathf.Rad2Deg}, end = {endPhi * Mathf.Rad2Deg}, delta = {phiDelta * Mathf.Rad2Deg}");
-			}
 
 			//2つの角度それぞれに対してカーソルを作成する
 			//左詰め配置ではなく均一配置がしたいので、初期値には delta / 2を足す
@@ -143,41 +127,29 @@ namespace Btf.View
 				//角度のカーソルを元に新しいベクトルを作成
 				var position = new Vector3(
 						startR * Mathf.Sin(thetaCursor) * Mathf.Cos(phiCursor)
-					  , startR * Mathf.Cos(thetaCursor)
 					  , startR * Mathf.Sin(thetaCursor) * Mathf.Sin(phiCursor)
+					  , startR * Mathf.Cos(thetaCursor)
 					)
 					;
 
-				//計算開始時に中心からのベクトルに変換しているので、ここで戻す
-				var worldPosition = position + worldCenterV;
-
-				Vector3 at;
-				switch (lookAt)
-				{
-					case LookAtKind.Center:
-						at = worldCenterV;
-						break;
-					case LookAtKind.CrossProduct:
-						at = Vector3.Cross(endV, startV);
-						break;
-					default:
-						throw new ArgumentOutOfRangeException();
-				}
-
+				//計算開始時にCenterからのベクトルに変換しているので、ここで戻す
+				var newPosition = position + centerV;
 
 				if (enableDebug)
 				{
-					Debug.Log($"{child.name}: on {worldPosition}, to {at}");
+					Debug.DrawLine(transform.TransformPoint(centerV), transform.TransformPoint(newPosition), Color.blue, 2f);
 				}
 
-				var rotation = Quaternion.FromToRotation(worldPosition, at);
+				//var rotation = Quaternion.FromToRotation(Vector3.up, to);
+				var rotation = Quaternion.LookRotation(centerV - newPosition);
 
 				if (enableDebug)
 				{
-					//Debug.DrawLine(rawCenterP, worldPosition, Color.red, 2f, false);
+					Debug.DrawLine(transform.TransformPoint(centerV), transform.TransformPoint(newPosition), Color.red, 2f);
 				}
 
-				child.SetPositionAndRotation(worldPosition, rotation);
+				child.localRotation = rotation;
+				child.localPosition = newPosition;
 
 				_laidOutGameObjectSub?.OnNext(child.name);
 
@@ -296,11 +268,5 @@ namespace Btf.View
 		#endregion
 
 		#endif
-
-		public enum LookAtKind
-		{
-			CrossProduct
-		  , Center
-		}
 	}
 }
