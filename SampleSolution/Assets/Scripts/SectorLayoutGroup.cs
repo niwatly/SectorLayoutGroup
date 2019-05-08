@@ -158,7 +158,7 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 			//他の点も向きたい？
 			var lookAtPosition = centerV;
 
-			var newRotation = Quaternion.LookRotation(lookAtPosition - newPosition, transform.up);
+			var newRotation = Quaternion.LookRotation(lookAtPosition - newPosition, transform.forward);
 
 			//Inspector上で指定されたOffsetを適用する
 			newRotation *= Quaternion.Euler(childRotationOffset);
