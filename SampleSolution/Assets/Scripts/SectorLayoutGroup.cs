@@ -376,20 +376,8 @@ public class SectorLayoutGroupEditor
 			return;
 		}
 
-		DrawSectorGizmos(view, 10, Color.grey);
-		DrawSphereGizmos(view.centerMarker.transform, Color.red);
-		DrawSphereGizmos(view.startMarker.transform, Color.blue);
-		DrawSphereGizmos(view.endMarker.transform, Color.green);
-	}
+		const int divideCount = 10;
 
-	private static void DrawSphereGizmos(Transform target, Color color)
-	{
-		Gizmos.color = color;
-		Gizmos.DrawSphere(target.position, 1f);
-	}
-
-	private static void DrawSectorGizmos(SectorLayoutGroup view, int divideCount, Color color)
-	{
 		var centerV = view.centerMarker.transform.localPosition;
 		var startV = view.startMarker.transform.localPosition - centerV;
 
@@ -415,10 +403,10 @@ public class SectorLayoutGroupEditor
 		var phiCursor = startPhi + phiDelta / 2;
 
 		//SectorLayoutGroupの仕様上、三角形の数は分割数 + 1 になる
-		var triangleCount = divideCount + 1;
+		const int triangleCount = divideCount + 1;
 
 		//三角形の頂点数なので + 2
-		var verticesCount = triangleCount + 2;
+		const int verticesCount = triangleCount + 2;
 
 		var vertices = new Vector3[verticesCount];
 
@@ -466,12 +454,21 @@ public class SectorLayoutGroupEditor
 
 		var mesh = new Mesh { vertices = vertices, triangles = indices };
 
-		Gizmos.color = color;
+		Gizmos.color = new Color(1f, 1f, 1f, 0.8f);
 		mesh.RecalculateNormals();
 
 		//これまでの計算はすべてLocalSpaceで行われているので、親を起点として描画する
 		var parentTransform = view.transform;
 		Gizmos.DrawMesh(mesh, parentTransform.position, parentTransform.rotation);
+
+		Gizmos.color = Color.red;
+		Gizmos.DrawSphere(view.centerMarker.transform.position, startR / 10);
+
+		Gizmos.color = Color.blue;
+		Gizmos.DrawSphere(view.startMarker.transform.position, startR / 10);
+
+		Gizmos.color = Color.green;
+		Gizmos.DrawSphere(view.endMarker.transform.position, startR / 10);
 	}
 }
 
