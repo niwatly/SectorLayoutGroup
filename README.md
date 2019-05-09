@@ -37,7 +37,7 @@ If you don't need the sector but circle, [uGUI-Circle-Layout-Group](https://gith
 4. In the same way, create a new game object as the *Start*.
 5. In the same way, create a new game object as the *End*.
 
-These steps are packed in the [SelctorLayoutGroup.prefab](https://github.com/niwatly/SectorLayoutGroup/blob/master/SectorTemplate.prefab)!
+These steps are packed in the [SectorTemplate](https://github.com/niwatly/SectorLayoutGroup/blob/master/SectorTemplate.prefab) as Prefab!
 
 ## Custom Parameters
 
