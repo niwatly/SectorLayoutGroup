@@ -2,6 +2,10 @@
 
 SectorLayoutGroup allows you to align children along the custom sector shape in Unity.
 
+
+<img src="https://github.com/niwatly/SectorLayoutGroup/blob/master/images/eyecatch.png" width="300px">
+
+
 You can define a sector shape in 3D, and adjust the following parameters by game object positioning.
 
 1. *Center* Position
@@ -9,10 +13,17 @@ You can define a sector shape in 3D, and adjust the following parameters by game
 3. *End* Position
 
 
+<img src="https://github.com/niwatly/SectorLayoutGroup/blob/master/images/howtouse.png" width="300px">
+
+
+
 If you don't need the sector but circle, [uGUI-Circle-Layout-Group](https://github.com/hont127/uGUI-Circle-Layout-Group) is more simply.
 
 ## Demos
 
+<img src="https://github.com/niwatly/SectorLayoutGroup/blob/master/images/demo2.gif">
+
+<img src="https://github.com/niwatly/SectorLayoutGroup/blob/master/images/demo1.gif">
 
 ## Requirement
 
@@ -29,6 +40,8 @@ If you don't need the sector but circle, [uGUI-Circle-Layout-Group](https://gith
 These steps are packed in the [SelctorLayoutGroup.prefab](https://github.com/niwatly/SectorLayoutGroup/blob/master/SectorLayoutPrefab.prefab)!
 
 ## Custom Parameters
+
+<img src="https://github.com/niwatly/SectorLayoutGroup/blob/master/images/inspector.png" width="300px">
 
 ### child rotation offset
 
