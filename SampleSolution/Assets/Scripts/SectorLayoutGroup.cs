@@ -26,8 +26,23 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 	public GameObject endMarker;
 
 	[SerializeField]
-	[Tooltip("子供の回転オフセット\n中心点を向くための回転角が決まった後、このオフセットが適用される")]
-	public Vector3 childRotationOffset;
+	[Tooltip("子供の回転方向\n指定された方向に子供の頭が向く用に回転ルートが決まる\n\n子供の向きや角度が思ったように行かないときに変更すると良い")]
+	public HeadDirection childHeadDirection = HeadDirection.Up;
+
+	[SerializeField]
+	[Range(0, 360)]
+	[Tooltip("子供の回転方向のオフセット（x軸）\n\n子供の向きや角度が思ったように行かないときに変更すると良い")]
+	public int childXOffset;
+
+	[SerializeField]
+	[Range(0, 360)]
+	[Tooltip("子供の回転方向のオフセット（y軸）\n\n子供の向きや角度が思ったように行かないときに変更すると良い")]
+	public int childYOffset;
+
+	[SerializeField]
+	[Range(0, 360)]
+	[Tooltip("子供の回転方向のオフセット（z軸）\n\n子供の向きや角度が思ったように行かないときに変更すると良い")]
+	public int childZOffset;
 
 	[SerializeField]
 	public AnimationConfig animationConfig;
@@ -157,21 +172,13 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 			//他の点も向きたい？
 			var lookAtPosition = centerV;
 
-			var newRotation = Quaternion.LookRotation(lookAtPosition - newPosition, transform.forward);
+			var newRotation = Quaternion.LookRotation(lookAtPosition - newPosition, childHeadDirection.ToVector());
 
 			//Inspector上で指定されたOffsetを適用する
-			newRotation *= Quaternion.Euler(childRotationOffset);
+			newRotation *= Quaternion.Euler(childXOffset, childYOffset, childZOffset);
 
 			//位置情報と回転情報を更新
-			if (EditorApplication.isPlayingOrWillChangePlaymode && animationConfig.IsValid)
-			{
-				StartSetPositionAndRotation(new LayoutData(child, newPosition, newRotation));
-			}
-			else
-			{
-				child.localRotation = newRotation;
-				child.localPosition = newPosition;
-			}
+			SetPositionAndRotation(new LayoutData(child, newPosition, newRotation));
 
 			//角度カーソルを次に進める
 			thetaCursor += thetaDelta;
@@ -179,7 +186,7 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 		}
 	}
 
-	private void StartSetPositionAndRotation(LayoutData layoutData)
+	private void SetPositionAndRotation(LayoutData layoutData)
 	{
 		if (_interpolatorDisposables.TryGetValue(layoutData.id, out var disposable))
 		{
@@ -187,24 +194,49 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 			disposable.Dispose();
 		}
 
-		var newDisposable = Observable.Return(layoutData)
-			   .CombineLatest(
-					//1. 指定フレーム間隔ごとに値を流す
-					Observable.IntervalFrame(animationConfig.frameInterval)
-						//2. 流れてくる値を指定された最大個数で正規化する
-					   .Select(x => (float) x / animationConfig.frameCount)
-						//3. 値の総数が最大個数を超えたら完了する（アニメーション終了）
-					   .TakeWhile(x => x <= animationConfig.frameCount)
-				  , (data, count) => (data, count)
-				)
-				//対称のGameObjectが破棄されたら完了する（アニメーション終了）
-			   .TakeUntil(layoutData.target.OnDestroyAsObservable())
-			   .Subscribe(x =>
-				{
-					//子供の位置と回転を更新する
-					x.data.Interpolate(x.count, animationConfig.useSlerp);
-				})
+		//1. 指定されたcountとintervalで、位置の変更を線形補間したい
+		var startAnimation = Observable.IntervalFrame(animationConfig.frameInterval)
+				//2. 流れてくる値を指定された最大個数で正規化する
+			   .Select(x => (float) x / animationConfig.frameCount)
+				//3. 値の総数が最大個数を超えたら完了する（アニメーション終了）
+			   .TakeWhile(x => x <= animationConfig.frameCount)
 			;
+
+		//アニメーションが行えない場合は位置の変更を即座に行いたい
+		var skipAnimation = Observable.Create<float>(observer =>
+				{
+					if (!animationConfig.IsValid)
+					{
+						//「アニメーションを利用しない」がONになっているので即座に移動する
+						observer.OnNext(1f);
+					}
+
+					#if UNITY_EDITOR
+					if (!EditorApplication.isPlayingOrWillChangePlaymode)
+					{
+						//Editor上で編集中なので即座に移動する
+						//扇形の形状を変更中などの値の更新頻度が高いケースにおいて変な感じになるのを避けたい
+						observer.OnNext(1f);
+					}
+					#endif
+
+					return Disposable.Empty;
+				})
+			   .First()
+			;
+
+		var newDisposable = Observable.Return(layoutData)
+		   .CombineLatest(
+				Observable.Amb(startAnimation, skipAnimation)
+			  , (data, cursor) => (data, cursor)
+			)
+			//対称のGameObjectが破棄されたら完了する（アニメーション終了）
+		   .TakeUntilDestroy(layoutData.target)
+		   .Subscribe(x =>
+			{
+				//子供の位置と回転を更新する
+				x.data.Interpolate(x.cursor, animationConfig.useSlerp);
+			});
 
 		_interpolatorDisposables[layoutData.id] = newDisposable;
 	}
@@ -231,16 +263,16 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 			this.target = target;
 		}
 
-		public void Interpolate(float t, bool useSlerp)
+		public void Interpolate(float cursor, bool useSlerp)
 		{
 			target.localPosition = useSlerp
-					? Vector3.Slerp(_oldPosition, _newPosition, t)
-					: Vector3.Lerp(_oldPosition, _newPosition, t)
+					? Vector3.Slerp(_oldPosition, _newPosition, cursor)
+					: Vector3.Lerp(_oldPosition, _newPosition, cursor)
 				;
 
 			target.localRotation = useSlerp
-					? Quaternion.Slerp(_oldRotation, _newRotation, t)
-					: Quaternion.Lerp(_oldRotation, _newRotation, t)
+					? Quaternion.Slerp(_oldRotation, _newRotation, cursor)
+					: Quaternion.Lerp(_oldRotation, _newRotation, cursor)
 				;
 		}
 	}
@@ -251,16 +283,19 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 	[Serializable]
 	public class AnimationConfig
 	{
+		[Tooltip("アニメーションを利用しない")]
+		public bool disable;
+
 		[Tooltip("アニメーションの実行に使用するフレーム数")]
 		public int frameCount = 10;
 
 		[Tooltip("アニメーションを実行するフレーム間隔")]
 		public int frameInterval = 1;
 
-		[Tooltip("アニメーション（Vector3による補完）にVector3.Slerpを使うかどうか\nfalseの場合、Vector3.Lerpを使用する")]
+		[Tooltip("アニメーションにVector3.Slerpを使うかどうか\nfalseの場合、Vector3.Lerpを使用する")]
 		public bool useSlerp;
 
-		public bool IsValid => frameCount > 0 && frameInterval > 0;
+		public bool IsValid => !disable && frameCount > 0 && frameInterval > 0;
 	}
 
 	/**
@@ -269,14 +304,47 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 	[Serializable]
 	public class DebugConfig
 	{
-		[Tooltip("デバッグ用の処理をONにする\n-Gizmosによる頂点の描画\n-Gizmosによる扇形の描画")]
+		[Tooltip("Gizmosによるデバッグ描画を行う")]
 		public bool enable;
 
-		[Tooltip("回転させない")]
+		[Tooltip("整列時、子供の回転情報をデフォルトに戻す")]
 		public bool freeze;
+	}
+
+	public enum HeadDirection
+	{
+		Right
+	  , Up
+	  , Forward
+	  , Left
+	  , Down
+	  , Back
 	}
 }
 
+public static class SectorLayoutGroupExtenstions
+{
+	public static Vector3 ToVector(this SectorLayoutGroup.HeadDirection source)
+	{
+		switch (source)
+		{
+			case SectorLayoutGroup.HeadDirection.Right:
+				return Vector3.right;
+			case SectorLayoutGroup.HeadDirection.Up:
+				return Vector3.up;
+			case SectorLayoutGroup.HeadDirection.Forward:
+				return Vector3.forward;
+			case SectorLayoutGroup.HeadDirection.Left:
+				return Vector3.left;
+			case SectorLayoutGroup.HeadDirection.Down:
+				return Vector3.down;
+			case SectorLayoutGroup.HeadDirection.Back:
+				return Vector3.back;
+			default:
+				throw new ArgumentOutOfRangeException(nameof(source), source, null);
+		}
+	}
+}
 #if UNITY_EDITOR
 /**
  * Editor編集時、パラメータの変更を検知してレイアウトを命令する
