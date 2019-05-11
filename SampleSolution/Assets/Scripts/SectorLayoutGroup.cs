@@ -450,7 +450,7 @@ namespace Niwatly
 			//xy平面上の角度をx、yz平面上の角度をyする2次元ベクトルを作成する
 			var startA = new Vector2(Mathf.Acos(startV.z / startR), Mathf.Atan2(startV.y, startV.x));
 
-			var endV = (view.endMarker.transform.localPosition - centerV).normalized * startR;
+			var endV = (view.endMarker.transform.localPosition - centerV).normalized * Mathf.Sqrt(startR);
 
 			//終点へのベクトルを極座標変換する
 			var endR = endV.magnitude;
@@ -471,10 +471,10 @@ namespace Niwatly
 			var vertices = new Vector3[verticesCount];
 
 			//扇形の中心の頂点
-			vertices[0] = centerV;
+			vertices[0] = view.transform.TransformPoint(centerV);
 
 			//扇形の始点の頂点
-			vertices[1] = startV + centerV;
+			vertices[1] = view.transform.TransformPoint(startV + centerV);
 
 			//極座標に従って線分をずらしていく
 			for (var i = 0; i < triangleCount; i++)
@@ -488,12 +488,12 @@ namespace Niwatly
 					;
 
 				//扇形の途中の頂点
-				vertices[i + 2] = position + centerV;
+				vertices[i + 2] = view.transform.TransformPoint(position + centerV);
 				angleCursor += angleDelta;
 			}
 
 			//扇形の終点の頂点
-			vertices[verticesCount - 1] = endV + centerV;
+			vertices[verticesCount - 1] = view.transform.TransformPoint(endV + centerV);
 
 			//裏面も描画したいので三角形の数の2倍のインデックスを計算する
 			var indices = new int[triangleCount * 6];
@@ -514,15 +514,13 @@ namespace Niwatly
 			Gizmos.color = new Color(1f, 1f, 1f, 0.8f);
 			mesh.RecalculateNormals();
 
-			//これまでの計算はすべてLocalSpaceで行われているので、親を起点として描画する
-			var parentTransform = view.transform;
-			Gizmos.DrawMesh(mesh, parentTransform.position, parentTransform.rotation);
+			Gizmos.DrawMesh(mesh);
 			Gizmos.color = Color.red;
-			Gizmos.DrawSphere(view.centerMarker.transform.position, startR / 10);
+			Gizmos.DrawSphere(view.centerMarker.transform.position, Mathf.Sqrt(startR) / 10);
 			Gizmos.color = Color.blue;
-			Gizmos.DrawSphere(view.startMarker.transform.position, startR / 10);
+			Gizmos.DrawSphere(view.startMarker.transform.position, Mathf.Sqrt(startR) / 10);
 			Gizmos.color = Color.green;
-			Gizmos.DrawSphere(view.endMarker.transform.position, startR / 10);
+			Gizmos.DrawSphere(view.endMarker.transform.position, Mathf.Sqrt(startR) / 10);
 		}
 	}
 
