@@ -138,32 +138,29 @@ namespace Niwatly
 
 			//始点へのベクトルを極座標変換する
 			var startR = startV.magnitude;
-			var startTheta = Mathf.Acos(startV.z / startR);
-			var startPhi = Mathf.Atan2(startV.y, startV.x);
+			//xy平面上の角度をx、yz平面上の角度をyする2次元ベクトルを作成する
+			var startA = new Vector2(Mathf.Acos(startV.z / startR), Mathf.Atan2(startV.y, startV.x));
 
 			var endV = (endMarker.transform.localPosition - centerV).normalized * startR;
 
 			//終点へのベクトルを極座標変換する
 			var endR = endV.magnitude;
-			var endTheta = Mathf.Acos(endV.z / endR);
-			var endPhi = Mathf.Atan2(endV.y, endV.x);
+			//xy平面上の角度をx、yz平面上の角度をyする2次元ベクトルを作成する
+			var endA = new Vector2(Mathf.Acos(endV.z / endR), Mathf.Atan2(endV.y, endV.x));
 
 			//始点と終点の角度を求め、子供一人あたりの差分を決める
-			//3次元なので角度も2つ
-			var thetaDelta = (endTheta - startTheta) / childrenCount;
-			var phiDelta = (endPhi - startPhi) / childrenCount;
+			var angleDelta = (endA - startA) / childrenCount;
 
 			//左詰め配置ではなく均一配置がしたいので、初期値には delta / 2を足す
-			var thetaCursor = startTheta + thetaDelta / 2;
-			var phiCursor = startPhi + phiDelta / 2;
+			var angleCursor = startA + angleDelta / 2;
 
 			foreach (var child in children)
 			{
 				//扇形に均一に配置するよう位置を作成する
 				var position = new Vector3(
-						startR * Mathf.Sin(thetaCursor) * Mathf.Cos(phiCursor)
-					  , startR * Mathf.Sin(thetaCursor) * Mathf.Sin(phiCursor)
-					  , startR * Mathf.Cos(thetaCursor)
+						startR * Mathf.Sin(angleCursor.x) * Mathf.Cos(angleCursor.y)
+					  , startR * Mathf.Sin(angleCursor.x) * Mathf.Sin(angleCursor.y)
+					  , startR * Mathf.Cos(angleCursor.x)
 					)
 					;
 
@@ -183,8 +180,7 @@ namespace Niwatly
 				SetPositionAndRotation(new LayoutData(child, newPosition, newRotation));
 
 				//角度カーソルを次に進める
-				thetaCursor += thetaDelta;
-				phiCursor += phiDelta;
+				angleCursor += angleDelta;
 			}
 		}
 
@@ -442,28 +438,30 @@ namespace Niwatly
 			}
 
 			const int divideCount = 10;
+
+			//始点へのベクトルと終点へのベクトルを作る
+			//
+			//Note: 角度算出のための極座標変換に向けて、中心点からのベクトルとする
 			var centerV = view.centerMarker.transform.localPosition;
 			var startV = view.startMarker.transform.localPosition - centerV;
 
 			//始点へのベクトルを極座標変換する
 			var startR = startV.magnitude;
-			var startTheta = Mathf.Acos(startV.z / startR);
-			var startPhi = Mathf.Atan2(startV.y, startV.x);
+			//xy平面上の角度をx、yz平面上の角度をyする2次元ベクトルを作成する
+			var startA = new Vector2(Mathf.Acos(startV.z / startR), Mathf.Atan2(startV.y, startV.x));
+
 			var endV = (view.endMarker.transform.localPosition - centerV).normalized * startR;
 
 			//終点へのベクトルを極座標変換する
 			var endR = endV.magnitude;
-			var endTheta = Mathf.Acos(endV.z / endR);
-			var endPhi = Mathf.Atan2(endV.y, endV.x);
+			//xy平面上の角度をx、yz平面上の角度をyする2次元ベクトルを作成する
+			var endA = new Vector2(Mathf.Acos(endV.z / endR), Mathf.Atan2(endV.y, endV.x));
 
 			//始点と終点の角度を求め、子供一人あたりの差分を決める
-			//3次元なので角度も2つ
-			var thetaDelta = (endTheta - startTheta) / divideCount;
-			var phiDelta = (endPhi - startPhi) / divideCount;
+			var angleDelta = (endA - startA) / divideCount;
 
 			//左詰め配置ではなく均一配置がしたいので、初期値には delta / 2を足す
-			var thetaCursor = startTheta + thetaDelta / 2;
-			var phiCursor = startPhi + phiDelta / 2;
+			var angleCursor = startA + angleDelta / 2;
 
 			//SectorLayoutGroupの仕様上、三角形の数は分割数 + 1 になる
 			const int triangleCount = divideCount + 1;
@@ -483,15 +481,15 @@ namespace Niwatly
 			{
 				//扇形に均一に配置するよう位置を作成する
 				var position = new Vector3(
-					startR * Mathf.Sin(thetaCursor) * Mathf.Cos(phiCursor)
-				  , startR * Mathf.Sin(thetaCursor) * Mathf.Sin(phiCursor)
-				  , startR * Mathf.Cos(thetaCursor)
-				);
+						startR * Mathf.Sin(angleCursor.x) * Mathf.Cos(angleCursor.y)
+					  , startR * Mathf.Sin(angleCursor.x) * Mathf.Sin(angleCursor.y)
+					  , startR * Mathf.Cos(angleCursor.x)
+					)
+					;
 
 				//扇形の途中の頂点
 				vertices[i + 2] = position + centerV;
-				thetaCursor += thetaDelta;
-				phiCursor += phiDelta;
+				angleCursor += angleDelta;
 			}
 
 			//扇形の終点の頂点
