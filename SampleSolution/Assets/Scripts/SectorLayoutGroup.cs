@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using UniRx;
-using UniRx.Triggers;
 using UnityEditor;
 using UnityEngine;
 
@@ -279,7 +278,6 @@ public sealed partial class SectorLayoutGroup : MonoBehaviour
 }
 
 #if UNITY_EDITOR
-
 /**
  * Editor編集時、パラメータの変更を検知してレイアウトを命令する
  */
@@ -314,28 +312,24 @@ public partial class SectorLayoutGroup
 
 		//直前に行っていたパラメータの変更をキャンセルする
 		_disposable?.Dispose();
-
 		var centerPositionChanged = centerMarker
 			   .ObserveEveryValueChanged(x => x.transform.position)
 				//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 			   .Skip(1)
 			   .AsUnitObservable()
 			;
-
 		var startPositionChanged = startMarker
 			   .ObserveEveryValueChanged(x => x.transform.position)
 				//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 			   .Skip(1)
 			   .AsUnitObservable()
 			;
-
 		var endPositionChanged = endMarker
 			   .ObserveEveryValueChanged(x => x.transform.position)
 				//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 			   .Skip(1)
 			   .AsUnitObservable()
 			;
-
 		var childrenCountChanged = transform.ObserveEveryValueChanged(x => x.childCount)
 				//購読直後のパラメータは捨てる（購読後にまとめてハンドルしたい）
 			   .Skip(1)
@@ -377,7 +371,6 @@ public class SectorLayoutGroupEditor
 		}
 
 		const int divideCount = 10;
-
 		var centerV = view.centerMarker.transform.localPosition;
 		var startV = view.startMarker.transform.localPosition - centerV;
 
@@ -385,7 +378,6 @@ public class SectorLayoutGroupEditor
 		var startR = startV.magnitude;
 		var startTheta = Mathf.Acos(startV.z / startR);
 		var startPhi = Mathf.Atan2(startV.y, startV.x);
-
 		var endV = (view.endMarker.transform.localPosition - centerV).normalized * startR;
 
 		//終点へのベクトルを極座標変換する
@@ -407,7 +399,6 @@ public class SectorLayoutGroupEditor
 
 		//三角形の頂点数なので + 2
 		const int verticesCount = triangleCount + 2;
-
 		var vertices = new Vector3[verticesCount];
 
 		//扇形の中心の頂点
@@ -428,7 +419,6 @@ public class SectorLayoutGroupEditor
 
 			//扇形の途中の頂点
 			vertices[i + 2] = position + centerV;
-
 			thetaCursor += thetaDelta;
 			phiCursor += phiDelta;
 		}
@@ -438,7 +428,6 @@ public class SectorLayoutGroupEditor
 
 		//裏面も描画したいので三角形の数の2倍のインデックスを計算する
 		var indices = new int[triangleCount * 6];
-
 		for (var i = 0; i < triangleCount; i++)
 		{
 			var offset = 3 * i;
@@ -453,20 +442,16 @@ public class SectorLayoutGroupEditor
 		}
 
 		var mesh = new Mesh { vertices = vertices, triangles = indices };
-
 		Gizmos.color = new Color(1f, 1f, 1f, 0.8f);
 		mesh.RecalculateNormals();
 
 		//これまでの計算はすべてLocalSpaceで行われているので、親を起点として描画する
 		var parentTransform = view.transform;
 		Gizmos.DrawMesh(mesh, parentTransform.position, parentTransform.rotation);
-
 		Gizmos.color = Color.red;
 		Gizmos.DrawSphere(view.centerMarker.transform.position, startR / 10);
-
 		Gizmos.color = Color.blue;
 		Gizmos.DrawSphere(view.startMarker.transform.position, startR / 10);
-
 		Gizmos.color = Color.green;
 		Gizmos.DrawSphere(view.endMarker.transform.position, startR / 10);
 	}
